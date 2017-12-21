@@ -1,0 +1,230 @@
+//
+//  HLoopScrollView.m
+//  testApp
+//
+//  Created by mmc on 14-4-18.
+//
+//
+
+#import "HLoopScrollView.h"
+
+@interface HLoopScrollView()
+
+
+@property (nonatomic, assign) NSInteger currentPageNumber;
+@property (nonatomic, assign) NSInteger numberOfPages;
+
+
+@property (nonatomic, strong) NSTimer*  hLoopTimer;
+- (NSInteger) getHLoopScrollViewNumbers;
+
+- (void) initPageControlView:(CGRect)frame;
+- (void) initContentViews;
+
+- (void) addScrollViewToMainView:(CGRect)frame;
+
+@end
+
+@implementation HLoopScrollView
+
+@synthesize dataSource = _dataSource;
+@synthesize delegate = _delegate;
+@synthesize mainScrollView = _mainScrollView;
+@synthesize currentPageNumber = _currentPageNumber;
+@synthesize numberOfPages = _numberOfPages;
+@synthesize pageControlView = _pageControlView;
+@synthesize hLoopTimer=_hLoopTimer;
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        
+        [self addScrollViewToMainView:frame];
+    }
+    return self;
+}
+
+- (void) loadData
+{
+    [self reloadData];
+}
+
+- (void) reloadData
+{
+    self.mainScrollView.delegate = nil;
+    [self.mainScrollView removeFromSuperview];
+    [self.pageControlView removeFromSuperview];
+    
+    [self addScrollViewToMainView:self.frame];
+    [self initPageControlView:self.frame ];
+    self.numberOfPages=0;
+    [self getHLoopScrollViewNumbers];
+    [self initContentViews];
+     [self performSelector:@selector(updateScrollView) withObject:nil afterDelay:0.0f];
+}
+- (void) freeTimer
+{
+    [self.hLoopTimer invalidate];
+}
+#pragma mark-
+- (NSInteger) getHLoopScrollViewNumbers
+{
+    if ( 0 == self.numberOfPages )
+    {
+        if ( [_dataSource conformsToProtocol:@protocol(IHLoopScrollViewDataSource)] && [_dataSource respondsToSelector:@selector(numberOfHLoopScrollViews)] )
+        {
+           self.numberOfPages  = [_dataSource numberOfHLoopScrollViews];
+        }
+    }
+    
+    return self.numberOfPages;
+}
+
+- (void) addScrollViewToMainView:(CGRect)frame
+{
+    self.mainScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, frame.size.height)];
+    self.mainScrollView.showsHorizontalScrollIndicator = NO;
+    self.mainScrollView.pagingEnabled = YES;
+    self.mainScrollView.delegate = self;
+    [self addSubview:self.mainScrollView];
+   
+}
+- (void) updateScrollView
+{
+    [self.hLoopTimer invalidate];
+    self.hLoopTimer  = nil;
+    //time duration
+    NSTimeInterval timeInterval = 5;
+    //timer
+    
+    if (self.isNotAotuPage) {
+        
+    }else{
+        self.hLoopTimer  = [NSTimer scheduledTimerWithTimeInterval:timeInterval target:self
+                                                          selector:@selector(handleMaxShowTimer:)
+                                                          userInfo: nil
+                                                           repeats:YES];
+    }
+
+}
+- (void)handleMaxShowTimer:(NSTimer*)theTimer
+{
+    CGPoint pt = self.mainScrollView.contentOffset;
+    NSInteger count =self.numberOfPages;
+    if(pt.x == self.frame.size.width * count){
+        [self.mainScrollView setContentOffset:CGPointMake(0, 0)];
+        [self.mainScrollView scrollRectToVisible:CGRectMake(self.frame.size.width,0,self.frame.size.width,140) animated:YES];
+    }else{
+        [self.mainScrollView scrollRectToVisible:CGRectMake(pt.x+self.frame.size.width,0,self.frame.size.width,140) animated:YES];
+    }
+
+  
+}
+- (void) initPageControlView:(CGRect)frame
+{
+    CGSize pageCtlSize = CGSizeMake(100, 20);
+    self.pageControlView = [[UIPageControl alloc] initWithFrame:CGRectMake((self.bounds.size.width - pageCtlSize.width)/2, frame.size.height - pageCtlSize.height, pageCtlSize.width, pageCtlSize.height)];
+    self.pageControlView.numberOfPages = [self getHLoopScrollViewNumbers];
+    self.pageControlView.currentPageIndicatorTintColor =WS_RGBA(216,61,67,1);
+    self.pageControlView.pageIndicatorTintColor =WS_RGBA(224,224,224,1);
+    self.pageControlView.backgroundColor=[UIColor clearColor];
+    [self addSubview:self.pageControlView];
+}
+
+- (void) initContentViews
+{
+    for ( int i = 0; i < [self getHLoopScrollViewNumbers] + 2; i++ )
+    {
+        UIView* view = nil;
+        
+        if ( [_dataSource conformsToProtocol:@protocol(IHLoopScrollViewDataSource)] && [_dataSource respondsToSelector:@selector(viewForHLoopScrollViewAtIndex:)] )
+        {
+            if ( [self getHLoopScrollViewNumbers] == i )
+            {
+                //same as first,i=4
+                view  = [_dataSource viewForHLoopScrollViewAtIndex:0];
+                view.frame = CGRectMake(view.frame.size.width*i, view.frame.origin.y, view.frame.size.width, view.frame.size.height);
+            }
+            if ( [self getHLoopScrollViewNumbers] + 1 == i )
+            {
+                //same as last,i=5
+                view  = [_dataSource viewForHLoopScrollViewAtIndex:[self getHLoopScrollViewNumbers] - 1];
+                view.frame = CGRectMake( - view.frame.size.width, view.frame.origin.y, view.frame.size.width, view.frame.size.height);
+            }
+            if ( i < [self getHLoopScrollViewNumbers] )
+            {
+                view  = [_dataSource viewForHLoopScrollViewAtIndex:i];
+                view.frame = CGRectMake(view.frame.size.width*i, view.frame.origin.y, view.frame.size.width, view.frame.size.height);
+            }
+        }
+        
+        UITapGestureRecognizer* singleRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(singleTap:)];
+        singleRecognizer.numberOfTapsRequired = 1;
+        [view addGestureRecognizer:singleRecognizer];
+        
+        [self.mainScrollView addSubview:view];
+    }
+    
+    self.mainScrollView.contentSize = CGSizeMake(self.mainScrollView.bounds.size.width*(self.numberOfPages + 1), self.mainScrollView.bounds.size.height);
+}
+
+#pragma mark -
+- (void) singleTap:(UITapGestureRecognizer*)recognizer
+{
+    if ( [_delegate conformsToProtocol:@protocol(IHLoopScrollViewDelegate)] && [_delegate respondsToSelector:@selector(hLoopScrollViewCellTapped:)] )
+    {
+        [_delegate hLoopScrollViewCellTapped:self.currentPageNumber];
+    }
+}
+
+#pragma mark -
+#pragma mark - scrollview delegate method
+- (void) scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    CGFloat pageWidth = scrollView.frame.size.width;
+    
+    int offsetX = scrollView.contentOffset.x;
+	if( offsetX < 0 )
+    {
+		[scrollView setContentOffset:CGPointMake(pageWidth * self.numberOfPages, 0)];
+	}
+	if( offsetX > pageWidth * self.numberOfPages )
+    {
+		[scrollView setContentOffset:CGPointMake(0, 0)];
+	}
+    
+   // self.currentPageNumber = floor((scrollView.contentOffset.x - pageWidth / 2) / pageWidth) + 1;
+   // self.pageControlView.currentPage = self.currentPageNumber;
+    
+    
+    //CGFloat pageWidth=self.mainScrollView.frame.size.width;
+    int currentPage=floor((self.mainScrollView.contentOffset.x-pageWidth/2)/pageWidth)+1;
+    if (currentPage==0) {
+        self.pageControlView.currentPage=self.numberOfPages-1;
+    }else if(currentPage==self.numberOfPages){
+        currentPage=0;
+    }
+    self.currentPageNumber =currentPage;
+    self.pageControlView.currentPage=currentPage;
+
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+//    CGFloat pageWidth = scrollView.frame.size.width;
+//    int offsetX = scrollView.contentOffset.x;
+//	if(offsetX/pageWidth == self.numberOfPages)
+//    {
+//		[scrollView setContentOffset:CGPointMake(0, 0)];
+//	}
+//    
+    int currentPage = floor((self.mainScrollView.contentOffset.x - self.mainScrollView.frame.size.width / (self.numberOfPages+2)) / self.mainScrollView.frame.size.width) + 1;
+    if (currentPage==0) {
+        //go last but 1 page
+        [self.mainScrollView scrollRectToVisible:CGRectMake(self.frame.size.width * self.numberOfPages,0,self.frame.size.width,140) animated:NO];
+    } else if (currentPage==(self.numberOfPages+1)) { //如果是最后+1,也就是要开始循环的第一个
+        [self.mainScrollView scrollRectToVisible:CGRectMake(self.frame.size.width,0,self.frame.size.width,140) animated:NO];
+    }
+}
+
+@end

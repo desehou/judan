@@ -1,0 +1,16 @@
+//
+//  MeHeaderView.h
+//  JuDan
+//
+//  Created by junli hou on 2017/12/4.
+//  Copyright © 2017年 JuDanMall. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+@interface MeHeaderView : UIView
+@property (nonatomic,strong)NSString *user_type;
+@property (nonatomic,strong)UIImageView *picImageView;
+@property (nonatomic,strong)UILabel *userNameLabel;
+@property (nonatomic,strong) UIButton *editBtn;
+@end
